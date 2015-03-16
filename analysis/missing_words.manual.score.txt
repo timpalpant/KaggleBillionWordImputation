@@ -1,0 +1,2 @@
+Percent exact matches: 0.370000 +/- 0.004877
+Mean Levenshtein distance: 3.040000 +/- 0.031196
