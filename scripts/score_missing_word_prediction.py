@@ -7,7 +7,12 @@ import kenlm
 from util import tokenize_words
 
 def load(istream):
-    return np.array(map(int, istream), dtype=int)
+    data = []
+    for line in istream:
+        entry = line.rstrip().split()
+        i = int(entry[0])
+        data.append(i)
+    return np.asarray(data)
 
 def opts():
     parser = argparse.ArgumentParser(

@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		1F08416A19DBC07400EF7E80 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1F08416919DBC07400EF7E80 /* main.cpp */; };
 		1F4767F21AAD23EF00AC65C4 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1F4767F11AAD23EF00AC65C4 /* main.cpp */; };
 		1FBE850E19CBAE7900519CEB /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1FBE850D19CBAE7900519CEB /* main.cpp */; };
 		1FBE851E19CBAED200519CEB /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1FBE851D19CBAED200519CEB /* main.cpp */; };
@@ -21,15 +20,6 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
-		1F08416519DBC07400EF7E80 /* CopyFiles */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = /usr/share/man/man1/;
-			dstSubfolderSpec = 0;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 1;
-		};
 		1F4767ED1AAD23EF00AC65C4 /* CopyFiles */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -69,8 +59,6 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		1F08416719DBC07400EF7E80 /* find_gaps */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = find_gaps; sourceTree = BUILT_PRODUCTS_DIR; };
-		1F08416919DBC07400EF7E80 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		1F4767EF1AAD23EF00AC65C4 /* reduce_vocab */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = reduce_vocab; sourceTree = BUILT_PRODUCTS_DIR; };
 		1F4767F11AAD23EF00AC65C4 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		1FBE850A19CBAE7900519CEB /* BillionWordImputation */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = BillionWordImputation; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -88,13 +76,6 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		1F08416419DBC07400EF7E80 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		1F4767EC1AAD23EF00AC65C4 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -132,14 +113,6 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		1F08416819DBC07400EF7E80 /* find_gaps */ = {
-			isa = PBXGroup;
-			children = (
-				1F08416919DBC07400EF7E80 /* main.cpp */,
-			);
-			path = find_gaps;
-			sourceTree = "<group>";
-		};
 		1F4767F01AAD23EF00AC65C4 /* reduce_vocab */ = {
 			isa = PBXGroup;
 			children = (
@@ -160,7 +133,6 @@
 				1FBE850C19CBAE7900519CEB /* BillionWordImputation */,
 				1FBE851C19CBAED200519CEB /* collapse_ngrams */,
 				1FE4E07519CBE8150009415D /* count_unigrams */,
-				1F08416819DBC07400EF7E80 /* find_gaps */,
 				1F4767F01AAD23EF00AC65C4 /* reduce_vocab */,
 				1FBE850B19CBAE7900519CEB /* Products */,
 			);
@@ -172,7 +144,6 @@
 				1FBE850A19CBAE7900519CEB /* BillionWordImputation */,
 				1FBE851B19CBAED100519CEB /* collapse_ngrams */,
 				1FE4E07419CBE8150009415D /* count_unigrams */,
-				1F08416719DBC07400EF7E80 /* find_gaps */,
 				1F4767EF1AAD23EF00AC65C4 /* reduce_vocab */,
 			);
 			name = Products;
@@ -205,23 +176,6 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		1F08416619DBC07400EF7E80 /* find_gaps */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 1F08416D19DBC07400EF7E80 /* Build configuration list for PBXNativeTarget "find_gaps" */;
-			buildPhases = (
-				1F08416319DBC07400EF7E80 /* Sources */,
-				1F08416419DBC07400EF7E80 /* Frameworks */,
-				1F08416519DBC07400EF7E80 /* CopyFiles */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			name = find_gaps;
-			productName = find_gaps;
-			productReference = 1F08416719DBC07400EF7E80 /* find_gaps */;
-			productType = "com.apple.product-type.tool";
-		};
 		1F4767EE1AAD23EF00AC65C4 /* reduce_vocab */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 1F4767F51AAD23EF00AC65C4 /* Build configuration list for PBXNativeTarget "reduce_vocab" */;
@@ -299,9 +253,6 @@
 				LastUpgradeCheck = 0600;
 				ORGANIZATIONNAME = "Timothy Palpant";
 				TargetAttributes = {
-					1F08416619DBC07400EF7E80 = {
-						CreatedOnToolsVersion = 6.0;
-					};
 					1F4767EE1AAD23EF00AC65C4 = {
 						CreatedOnToolsVersion = 6.1.1;
 					};
@@ -331,21 +282,12 @@
 				1FBE850919CBAE7900519CEB /* BillionWordImputation */,
 				1FBE851A19CBAED100519CEB /* collapse_ngrams */,
 				1FE4E07319CBE8150009415D /* count_unigrams */,
-				1F08416619DBC07400EF7E80 /* find_gaps */,
 				1F4767EE1AAD23EF00AC65C4 /* reduce_vocab */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXSourcesBuildPhase section */
-		1F08416319DBC07400EF7E80 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				1F08416A19DBC07400EF7E80 /* main.cpp in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		1F4767EB1AAD23EF00AC65C4 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -381,24 +323,6 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
-		1F08416B19DBC07400EF7E80 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				GCC_PREPROCESSOR_DEFINITIONS = (
-					"DEBUG=1",
-					"$(inherited)",
-				);
-				PRODUCT_NAME = "$(TARGET_NAME)";
-			};
-			name = Debug;
-		};
-		1F08416C19DBC07400EF7E80 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				PRODUCT_NAME = "$(TARGET_NAME)";
-			};
-			name = Release;
-		};
 		1F4767F31AAD23EF00AC65C4 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -505,6 +429,7 @@
 					/Users/timpalpant/Documents/Workspace/kenlm/lib,
 					/usr/local/lib,
 				);
+				LLVM_LTO = NO;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				USER_HEADER_SEARCH_PATHS = "";
 			};
@@ -514,6 +439,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				GCC_OPTIMIZATION_LEVEL = fast;
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
 				GCC_UNROLL_LOOPS = NO;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
@@ -526,6 +452,7 @@
 					/Users/timpalpant/Documents/Workspace/kenlm/lib,
 					/usr/local/lib,
 				);
+				LLVM_LTO = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				USER_HEADER_SEARCH_PATHS = "";
 			};
@@ -594,15 +521,6 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		1F08416D19DBC07400EF7E80 /* Build configuration list for PBXNativeTarget "find_gaps" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				1F08416B19DBC07400EF7E80 /* Debug */,
-				1F08416C19DBC07400EF7E80 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
 		1F4767F51AAD23EF00AC65C4 /* Build configuration list for PBXNativeTarget "reduce_vocab" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

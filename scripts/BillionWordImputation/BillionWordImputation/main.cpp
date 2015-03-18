@@ -10,9 +10,7 @@
 #include <string>
 #include <fstream>
 
-#include <boost/algorithm/string.hpp>
-
-#define KENLM_MAX_ORDER 5
+#define KENLM_MAX_ORDER 6
 #define HAVE_ZLIB 1
 #define HAVE_BZLIB 1
 #define HAVE_XZLIB 1
@@ -20,6 +18,8 @@
 #include "lm/config.hh"
 #include "lm/model.hh"
 #include "lm/enumerate_vocab.hh"
+#include "lm/binary_format.hh"
+#include "lm/model_type.hh"
 
 using namespace std;
 using namespace lm;
@@ -29,14 +29,18 @@ typedef vector<WordIndex> Tokens;
 
 class Dictionary : public EnumerateVocab {
 private:
-  vector<StringPiece> data_;
+  vector<string> data_;
 public:
   void Add(WordIndex index, const StringPiece& str) {
-    data_.push_back(str);
+    data_.push_back(str.as_string());
   }
   
-  const StringPiece& get(const int i) const {
+  const string& get(const int i) const {
     return data_[i];
+  }
+  
+  size_t size() const {
+    return data_.size();
   }
 };
 
@@ -44,6 +48,8 @@ struct Guess {
   int location;
   WordIndex word;
   float probability = -1000000;
+  float second_best = -1000000;
+  float best_at_different_location = -1000000;
   
   Guess() : Guess(-1) { }
   
@@ -52,76 +58,90 @@ struct Guess {
   }
 };
 
-vector<float> score_sentence(const TrieModel& model, const Tokens& words) {
-  cerr << "Scoring sentence" << endl;
+// fully score list of tokens, populating list of states and probabilities
+template <class Model>
+void score_sentence(const Model& model, const Tokens& words,
+                    vector<State>& states, vector<float>& p) {
   State state(model.BeginSentenceState()), out_state;
-  vector<float> p;
+  states.reserve(words.size()+1);
+  p.reserve(words.size());
+  states.push_back(state);
   for (const WordIndex word : words) {
     p.push_back(model.Score(state, word, out_state));
+    states.push_back(out_state);
     state = out_state;
   }
-  return p;
 }
 
-Guess max_prob_word_at(const Tokens& words, const int i, const TrieModel& model,
-                       const vector<float>& p_original) {
+// find best guess for missing word inserted at location i
+template <class Model>
+Guess max_prob_word_at(const Model& model, const Tokens& words, const int i,
+                       const vector<State>& states, const vector<float>& p) {
+  // total probability of words before inserted word
+  // or after the n-grams that include the inserted word
+  float p_else = 0;
+  for (int j = 0; j < i; j++) {
+    p_else += p[j];
+  }
+  for (int j = i+model.Order(); j < p.size(); j++) {
+    p_else += p[j];
+  }
+  
+  // Test each word at location i
   // For a word inserted at position i, we need to rescore
-  // the states that include this word, i.e. i-n ... i+n
+  // the states that include this word, i.e. i ... i+n
   Guess best(i);
-  Tokens inserted;
-  WordIndex offset = max(0, i-int(model.Order())+1);
-  State state(model.BeginSentenceState()), out_state;
-  for (WordIndex j = offset; j < i; j++) {
-    // words before i that i is conditional on
-    model.Score(state, words[j], out_state);
-    state = out_state;
-  }
-  inserted.push_back(0); // the inserted word at position i
-  for (WordIndex j = i; j < min(int(words.size()),i+model.Order()-1); j++) {
-    inserted.push_back(words[j]); // words after i with state that is conditional on i
-  }
-  
-  // now rescore affected words for each candidate insertion from vocab.
-  // TODO we could reuse the state more effectively
-  const SortedVocabulary& vocab = model.GetVocabulary();
-  
+  State state, out_state;
+  const typename Model::Vocabulary& vocab = model.GetVocabulary();
+  size_t stop = min(size_t(model.Order()), words.size()-i);
+  float p_total;
   for (WordIndex word = 0; word < vocab.Bound(); word++) {
-    inserted[i-offset] = word;
-    float p;
-    for (const WordIndex word : words) {
-      p += model.Score(state, word, out_state);
+    p_total = p_else;
+    // score the inserted word at location i
+    state = states[i];
+    p_total += model.Score(state, word, out_state);
+    state = out_state;
+    // score the N subsequent words whose context depends on i
+    for (int j = 0; j < stop; j++) {
+      p_total += model.Score(state, words[i+j], out_state);
       state = out_state;
     }
     
-    if (p > best.probability) {
-      best.probability = p;
+    if (p_total > best.probability) {
       best.word = word;
+      best.second_best = best.probability;
+      best.probability = p_total;
     }
-  }
-  
-  // compute total probability of words not affected by insert at i
-  for (int j = 0; j < i; j++) {
-    best.probability += p_original[j]; // words before state that conditions i
-  }
-  for (int j = i+model.Order(); j < words.size(); j++) {
-    best.probability += p_original[j]; // words after state conditioned on i
   }
   
   return best;
 }
 
-Guess find_missing_word(const TrieModel& model, const Tokens& words) {
-  if (words.size() <= 2) {
-    cerr << "Sentence has only " << words.size() << " words" << endl;
-    return max_prob_word_at(words, 1, model, p_original);
+// find the best guess for a missing word in list of tokens
+template <class Model>
+Guess find_missing_word(const Model& model, const Tokens& words) {
+  vector<State> states;
+  vector<float> p;
+  score_sentence(model, words, states, p);
+  
+  if (words.size() == 0) {
+    return max_prob_word_at(model, words, 0, states, p);
+  } else if (words.size() <= 2) {
+    return max_prob_word_at(model, words, 1, states, p);
   }
   
   Guess best, i_best;
   // Missing word cannot be the first or last (see rules)
   for (int i = 1; i < words.size()-1; i++) {
-    cerr << "Considering words inserted at " << i << endl;
-    i_best = max_prob_word_at(words, i, model, p_original);
-    if (i_best.probability > best.probability) {
+    i_best = max_prob_word_at(model, words, i, states, p);
+    if (i_best.probability > best.probability) { // new best
+      if (best.probability > i_best.second_best) {
+        // previous best is better than any other word inserted at i
+        i_best.second_best = best.probability;
+      } // else second best word at i is better than all previous
+      
+      // previous best was at a different location
+      i_best.best_at_different_location = best.probability;
       best = i_best;
     }
   }
@@ -129,40 +149,70 @@ Guess find_missing_word(const TrieModel& model, const Tokens& words) {
   return best;
 }
 
-Tokens parse_sentence(const string& s, const SortedVocabulary& vocab) {
+// Given a sentence s, split tokens and lookup vocab ids
+template <class Model>
+Tokens parse_sentence(const Model& model, const string& s) {
   stringstream ss(s);
-  std::string item;
+  string item;
   Tokens words;
+  const typename Model::Vocabulary& vocab = model.GetVocabulary();
   while (getline(ss, item, ' ')) {
     words.push_back(vocab.Index(item));
   }
   return words;
 }
 
-int main(int argc, const char * argv[]) {
-  if (argc < 4) {
-    cerr << "USAGE: BillionWordImputation model.kenlm guessed_locations.txt guessed_words.txt" << endl;
+template <class Model>
+void process_sentences(const Model& model, const Dictionary* dict) {
+  cerr << "Model state size = " << size_t(model.Order()) << endl;
+  cerr << "Dictionary contains " << dict->size() << " words" << endl;
+  
+  cerr << "Processing sentences" << endl;
+  string sentence;
+  unsigned long line_num = 0;
+  while (getline(cin, sentence)) {
+    Tokens words = parse_sentence(model, sentence);
+    Guess guess = find_missing_word(model, words);
+    float location_odds = guess.probability - guess.best_at_different_location;
+    float word_odds = guess.probability - guess.second_best;
+    cout << guess.location << '\t' << location_odds
+    << '\t' << dict->get(guess.word) << '\t' << word_odds << endl;
+    
+    if (++line_num % 1000 == 0) {
+      cerr << line_num << endl;
+    }
+  }
+}
+
+int main(int argc, const char* argv[]) {
+  if (argc < 2) {
+    cerr << "USAGE: BillionWordImputation model.kenlm" << endl;
     exit(2);
   }
   
-  cerr << "Loading KenLM model" << endl;
+  const char* model_filename = argv[1];
+  cerr << "Loading KenLM model: " << model_filename << endl;
   Dictionary* dict = new Dictionary();
   Config cfg;
   cfg.enumerate_vocab = dict;
-  TrieModel model(argv[1], cfg);
-  const SortedVocabulary& vocab = model.GetVocabulary();
-  
-  cerr << "Processing sentences" << endl;
-  ofstream guessed_locations(argv[2]);
-  ofstream guessed_words(argv[3]);
-  string sentence;
-  while (getline(cin, sentence)) {
-    Tokens words = parse_sentence(sentence, vocab);
-    Guess guess = find_missing_word(model, words);
-    guessed_locations << guess.location << endl;
-    guessed_words << dict->get(guess.word) << endl;
+  ModelType model_type;
+  RecognizeBinary(model_filename, model_type);
+  switch (model_type) {
+    {
+    case ModelType::PROBING:
+      ProbingModel pmodel(model_filename, cfg);
+      process_sentences(pmodel, dict);
+      break;
+    } {
+    case ModelType::TRIE:
+      TrieModel tmodel(model_filename, cfg);
+      process_sentences(tmodel, dict);
+      break;
+    } {
+    default:
+      cerr << "Unsupported model type: " << model_type << endl;
+      exit(2);
+    }
   }
   
-  guessed_locations.close();
-  guessed_words.close();
 }
