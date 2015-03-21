@@ -30,7 +30,7 @@ if __name__ == "__main__":
             continue
             
         for j, word in enumerate(words):
-            if word == '<unk>':
+            if word == '<unknown>':
                 words[j] = pos[j]
         print ' '.join(words)
         

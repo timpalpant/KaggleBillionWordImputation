@@ -40,7 +40,7 @@ if __name__ == "__main__":
         words = tokenize_words(line)
         for j, word in enumerate(words):
             if word not in vocab:
-                words[j] = '<unk>'
+                words[j] = '<unknown>'
         print ' '.join(words)
         
         if i % 100000 == 0:

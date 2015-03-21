@@ -22,5 +22,6 @@ if __name__ == "__main__":
     for sentence, i_missing in izip(args.sample, args.removed):
         words = tokenize_words(sentence)
         i_missing = int(i_missing)
-        print ' '.join(words[:i_missing]) + ' ________ ' + ' '.join(words[i_missing:])
+        words.insert(i_missing, '________')
+        print ' '.join(words)
         

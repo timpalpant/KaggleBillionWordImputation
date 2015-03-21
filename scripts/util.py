@@ -1,12 +1,15 @@
 import sys
 from collections import defaultdict
-from itertools import islice
+from itertools import islice, izip
 import numpy as np
 from scipy.misc import logsumexp
+import Levenshtein
 
 PUNCTUATION = set(("'", '"', ',', '.', '!', '?', ';', ':', '-', '--', '(', ')', 
                    '/', '_', '\\', '+', '<', '>', '|', '@', '#', '$', '%', '^', 
                    '&', '*', '[', ']', '{', '}'))
+
+POS_TAGS = set(('UH','WP$','PDT','RBS','LS','EX','WP','$','SYM','RP','CC','RBR','VBG','NNS','CD','PRP$','MD','DT','NNPS','VBD','IN','JJS','WRB','VBN','JJR','WDT','POS','TO','NNP','JJ','RB','VB','FW','PRP','VBZ','NN','VBP'))
 
 def is_punctuation(word):
     return (word in PUNCTUATION)
@@ -17,6 +20,9 @@ def is_number(word):
         return True
     except: 
         return False
+
+def is_pos_tag(word):
+    return (word in POS_TAGS)
 
 def window(seq, n=2):
     "Returns a sliding window (of width n) over data from the iterable"
@@ -83,3 +89,11 @@ def load_vocab(vocab_file):
         freq = int(freq)
         vocab[word] = freq
     return vocab
+    
+def score(golden, predicted):
+    total_d = 0.0
+    n = 0
+    for ref, pred in izip(golden, predicted):
+        total_d += Levenshtein.distance(ref, pred)
+        n += 1
+    return total_d / n
