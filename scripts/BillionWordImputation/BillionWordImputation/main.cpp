@@ -14,6 +14,7 @@
 #define HAVE_ZLIB 1
 #define HAVE_BZLIB 1
 #define HAVE_XZLIB 1
+#define KEEP_TOP_N 5
 
 #include "lm/config.hh"
 #include "lm/model.hh"
@@ -26,6 +27,19 @@ using namespace lm;
 using namespace lm::ngram;
 
 typedef vector<WordIndex> Tokens;
+
+template <typename T>
+T log10_add(const T x, const T y) {
+  if (x == -numeric_limits<T>::infinity()) {
+    return y;
+  }
+  
+  if (x < y) {
+    return log10_add(y, x);
+  }
+  
+  return y + log10(pow(10.0, x-y));
+}
 
 class Dictionary : public EnumerateVocab {
 private:
@@ -44,17 +58,80 @@ public:
   }
 };
 
-struct Guess {
+class Guess {
+public:
   int location;
   WordIndex word;
-  float probability = -1000000;
-  float second_best = -1000000;
-  float best_at_different_location = -1000000;
+  vector<float> p_at_location; // P(sentence) for best N words at location
+  vector<float> p_surrounding; // P(word | context) for N-grams including word
+  vector<float> p_at_other_location; // P(sentence) for best N words at a different location
+  vector<float> p_anywhere; // P(sentence) for the best N words at any location
+  float Z = -numeric_limits<float>::infinity();
   
   Guess() : Guess(-1) { }
   
-  Guess(const int loc) {
+  Guess(const int loc) : p_at_location(KEEP_TOP_N, -numeric_limits<float>::infinity()),
+                         p_anywhere(KEEP_TOP_N, -numeric_limits<float>::infinity()) {
     location = loc;
+  }
+  
+  void update(const WordIndex word, const float p, const vector<float>& p_surrounding) {
+    if (p > p_at_location.back()) { // new word in top N
+      // find rank of new word
+      auto insert = lower_bound(p_at_location.rbegin(), p_at_location.rend(), p);
+      size_t i = p_at_location.size() - distance(p_at_location.rbegin(), insert);
+      
+      // shift worse words down by one
+      for (size_t j = p_at_location.size()-1; j > i; j--) {
+        p_at_location[j] = p_at_location[j-1];
+      }
+      p_at_location[i] = p;
+      
+      if (i == 0) { // new best word
+        this->word = word;
+        this->p_surrounding = p_surrounding;
+      }
+    }
+    
+    Z = log10_add(Z, p); // add to partition function
+  }
+  
+  void update(const Guess& other) {
+    Z = log10_add(Z, other.Z);
+    
+    if (other.p_at_location.front() > p_anywhere.back()) {
+      vector<float> merged;
+      merged.reserve(p_anywhere.size()+other.p_at_location.size());
+      merge(p_anywhere.begin(), p_anywhere.end(),
+            other.p_at_location.begin(), other.p_at_location.end(),
+            merged.begin());
+      merged.resize(KEEP_TOP_N);
+      p_anywhere = merged;
+    }
+    
+    if (other.p_at_location.front() > p_at_location.front()) { // new best
+      location = other.location;
+      word = other.word;
+      p_at_other_location = p_at_location;
+      p_at_location = other.p_at_location;
+      p_surrounding = other.p_surrounding;
+    }
+  }
+  
+  void print_to(ostream& o, const Dictionary* dict) {
+    o << location << '\t';
+    o << dict->get(word) << '\t';
+    o << Z << '\t';
+    for (const float p : p_at_location) {
+      o << p << '\t';
+    }
+    for (const float p : p_at_other_location) {
+      o << p << '\t';
+    }
+    for (const float p : p_surrounding) {
+      o << p << '\t';
+    }
+    o << endl;
   }
 };
 
@@ -94,24 +171,25 @@ Guess max_prob_word_at(const Model& model, const Tokens& words, const int i,
   State state, out_state;
   const typename Model::Vocabulary& vocab = model.GetVocabulary();
   size_t stop = min(size_t(model.Order()), words.size()-i);
-  float p_total;
+  float p_total, p_w;
+  vector<float> p_surrounding(model.Order()+1);
   for (WordIndex word = 0; word < vocab.Bound(); word++) {
     p_total = p_else;
     // score the inserted word at location i
     state = states[i];
-    p_total += model.Score(state, word, out_state);
+    p_w = model.Score(state, word, out_state);
+    p_surrounding[0] = p_w;
+    p_total += p_w;
     state = out_state;
     // score the N subsequent words whose context depends on i
     for (int j = 0; j < stop; j++) {
-      p_total += model.Score(state, words[i+j], out_state);
+      p_w = model.Score(state, words[i+j], out_state);
+      p_surrounding[j+1] = p_w;
+      p_total += p_w;
       state = out_state;
     }
     
-    if (p_total > best.probability) {
-      best.word = word;
-      best.second_best = best.probability;
-      best.probability = p_total;
-    }
+    best.update(word, p_total, p_surrounding);
   }
   
   return best;
@@ -124,7 +202,7 @@ Guess find_missing_word(const Model& model, const Tokens& words) {
   vector<float> p;
   score_sentence(model, words, states, p);
   
-  if (words.size() == 0) {
+  if (words.size() <= 1) {
     return max_prob_word_at(model, words, 0, states, p);
   } else if (words.size() <= 2) {
     return max_prob_word_at(model, words, 1, states, p);
@@ -134,16 +212,7 @@ Guess find_missing_word(const Model& model, const Tokens& words) {
   // Missing word cannot be the first or last (see rules)
   for (int i = 1; i < words.size()-1; i++) {
     i_best = max_prob_word_at(model, words, i, states, p);
-    if (i_best.probability > best.probability) { // new best
-      if (best.probability > i_best.second_best) {
-        // previous best is better than any other word inserted at i
-        i_best.second_best = best.probability;
-      } // else second best word at i is better than all previous
-      
-      // previous best was at a different location
-      i_best.best_at_different_location = best.probability;
-      best = i_best;
-    }
+    best.update(i_best);
   }
   
   return best;
@@ -173,10 +242,7 @@ void process_sentences(const Model& model, const Dictionary* dict) {
   while (getline(cin, sentence)) {
     Tokens words = parse_sentence(model, sentence);
     Guess guess = find_missing_word(model, words);
-    float location_odds = guess.probability - guess.best_at_different_location;
-    float word_odds = guess.probability - guess.second_best;
-    cout << guess.location << '\t' << location_odds
-    << '\t' << dict->get(guess.word) << '\t' << word_odds << endl;
+    guess.print_to(cout, dict);
     
     if (++line_num % 1000 == 0) {
       cerr << line_num << endl;
