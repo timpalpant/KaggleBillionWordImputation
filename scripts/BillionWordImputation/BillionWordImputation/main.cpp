@@ -15,6 +15,7 @@
 #define HAVE_BZLIB 1
 #define HAVE_XZLIB 1
 #define KEEP_TOP_N 5
+#define MAX_VOCAB_SIZE 50000
 
 #include "lm/config.hh"
 #include "lm/model.hh"
@@ -29,16 +30,12 @@ using namespace lm::ngram;
 typedef vector<WordIndex> Tokens;
 
 template <typename T>
-T log10_add(const T x, const T y) {
-  if (x == -numeric_limits<T>::infinity()) {
-    return y;
-  }
-  
-  if (x < y) {
-    return log10_add(y, x);
-  }
-  
-  return y + log10(pow(10.0, x-y));
+T logsumexp(const vector<T>& nums) {
+  T max_exp = *max_element(nums.cbegin(), nums.cend());
+  T sum = 0.0;
+  for (const T x : nums)
+    sum += pow(10.0, x - max_exp);
+  return log10(sum) + max_exp;
 }
 
 class Dictionary : public EnumerateVocab {
@@ -66,20 +63,21 @@ public:
   vector<float> p_surrounding; // P(word | context) for N-grams including word
   vector<float> p_at_other_location; // P(sentence) for best N words at a different location
   vector<float> p_anywhere; // P(sentence) for the best N words at any location
-  float Z = -numeric_limits<float>::infinity();
+  vector<float> Z;
   
   Guess() : Guess(-1) { }
   
   Guess(const int loc) : p_at_location(KEEP_TOP_N, -numeric_limits<float>::infinity()),
                          p_anywhere(KEEP_TOP_N, -numeric_limits<float>::infinity()) {
     location = loc;
+    Z.reserve(MAX_VOCAB_SIZE);
   }
   
   void update(const WordIndex word, const float p, const vector<float>& p_surrounding) {
     if (p > p_at_location.back()) { // new word in top N
       // find rank of new word
-      auto insert = lower_bound(p_at_location.rbegin(), p_at_location.rend(), p);
-      size_t i = p_at_location.size() - distance(p_at_location.rbegin(), insert);
+      auto insert = lower_bound(p_at_location.crbegin(), p_at_location.crend(), p);
+      size_t i = p_at_location.size() - distance(p_at_location.crbegin(), insert);
       
       // shift worse words down by one
       for (size_t j = p_at_location.size()-1; j > i; j--) {
@@ -93,17 +91,17 @@ public:
       }
     }
     
-    Z = log10_add(Z, p); // add to partition function
+    Z.push_back(p);
   }
   
   void update(const Guess& other) {
-    Z = log10_add(Z, other.Z);
+    Z.push_back(logsumexp(other.Z));
     
     if (other.p_at_location.front() > p_anywhere.back()) {
       vector<float> merged;
       merged.reserve(p_anywhere.size()+other.p_at_location.size());
-      merge(p_anywhere.begin(), p_anywhere.end(),
-            other.p_at_location.begin(), other.p_at_location.end(),
+      merge(p_anywhere.cbegin(), p_anywhere.cend(),
+            other.p_at_location.cbegin(), other.p_at_location.cend(),
             merged.begin());
       merged.resize(KEEP_TOP_N);
       p_anywhere = merged;
@@ -121,7 +119,7 @@ public:
   void print_to(ostream& o, const Dictionary* dict) {
     o << location << '\t';
     o << dict->get(word) << '\t';
-    o << Z << '\t';
+    o << logsumexp(Z) << '\t';
     for (const float p : p_at_location) {
       o << p << '\t';
     }
