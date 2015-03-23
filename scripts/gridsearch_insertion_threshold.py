@@ -7,19 +7,33 @@ from itertools import izip
 from util import tokenize_words, score
 import matplotlib.pyplot as plt
 
+KEEP_TOP_N = 5
+
 class Prediction(object):
-    def __init__(self, loc, ll_loc, word, ll_word):
+    def __init__(self, loc, word, Z, Z_location, *args):
         self.location = loc
-        self.ll_location = ll_loc
         self.word = word
-        self.ll_word = ll_word
+        self.Z = Z
+        self.Z_location = Z_location
+        self.p_anywhere = args[:KEEP_TOP_N]
+        self.p_at_location = args[KEEP_TOP_N:2*KEEP_TOP_N]
+        self.p_at_other_location = args[2*KEEP_TOP_N:3*KEEP_TOP_N]
+        self.p_surrounding = args[3*KEEP_TOP_N:]
+        
+    @property
+    def location_posterior(self):
+        return 10.**(self.Z_location - self.Z)
+        
+    @property
+    def word_posterior(self):
+        return 10.**(self.p_anywhere[0] - self.Z)
         
     @classmethod
     def parse(cls, line):
         entry = line.rstrip().split('\t')
         entry[0] = int(entry[0])
-        entry[1] = float(entry[1])
-        entry[3] = float(entry[3])
+        for i in xrange(2, len(entry)):
+            entry[i] = float(entry[i])
         return cls(*entry)
 
 def remove_word(words, loc):
@@ -66,8 +80,8 @@ if __name__ == "__main__":
     
     best = None
     best_score = s
-    loc_thresholds = (0, 0.1, 0.25, 0.5, 0.75, 1., 1.25, 1.5, 1.6, 1.75, 1.85, 2.)
-    word_thresholds = (0, 0.1, 0.25, 0.5, 0.75, 1., 1.25, 1.5, 1.75, 2.)
+    loc_thresholds = (0, 0.2, 0.4, 0.5, 0.6, 0.8, 1.)
+    word_thresholds = (0, 0.2, 0.4, 0.5, 0.6, 0.8, 1.)
     loss_surface = np.zeros((len(loc_thresholds), len(word_thresholds)))
     for i, loc_threshold in enumerate(loc_thresholds):
         for j, word_threshold in enumerate(word_thresholds):
