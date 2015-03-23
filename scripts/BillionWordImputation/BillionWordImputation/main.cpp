@@ -98,11 +98,10 @@ public:
     Z.push_back(logsumexp(other.Z));
     
     if (other.p_at_location.front() > p_anywhere.back()) {
-      vector<float> merged;
-      merged.reserve(p_anywhere.size()+other.p_at_location.size());
-      merge(p_anywhere.cbegin(), p_anywhere.cend(),
-            other.p_at_location.cbegin(), other.p_at_location.cend(),
-            merged.begin());
+      vector<float> merged(p_anywhere.size()+other.p_at_location.size());
+      merge(p_anywhere.crbegin(), p_anywhere.crend(),
+            other.p_at_location.crbegin(), other.p_at_location.crend(),
+            merged.rbegin());
       merged.resize(KEEP_TOP_N);
       p_anywhere = merged;
     }
@@ -120,6 +119,9 @@ public:
     o << location << '\t';
     o << dict->get(word) << '\t';
     o << logsumexp(Z) << '\t';
+    for (const float p : p_anywhere) {
+      o << p << '\t';
+    }
     for (const float p : p_at_location) {
       o << p << '\t';
     }
