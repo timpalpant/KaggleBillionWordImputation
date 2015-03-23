@@ -63,7 +63,8 @@ public:
   vector<float> p_surrounding; // P(word | context) for N-grams including word
   vector<float> p_at_other_location; // P(sentence) for best N words at a different location
   vector<float> p_anywhere; // P(sentence) for the best N words at any location
-  vector<float> Z;
+  vector<float> Z; // sum P(sentence) for each insertion location
+  float Z_location; // sum P(sentence) for bets insertion location
   
   Guess() : Guess(-1) { }
   
@@ -112,24 +113,26 @@ public:
       p_at_other_location = p_at_location;
       p_at_location = other.p_at_location;
       p_surrounding = other.p_surrounding;
+      Z_location = Z.back();
     }
   }
   
   void print_to(ostream& o, const Dictionary* dict) {
-    o << location << '\t';
-    o << dict->get(word) << '\t';
-    o << logsumexp(Z) << '\t';
+    o << location;
+    o << '\t' << dict->get(word);
+    o << '\t' << logsumexp(Z);
+    o << '\t' << Z_location;
     for (const float p : p_anywhere) {
-      o << p << '\t';
+      o << '\t' << p;
     }
     for (const float p : p_at_location) {
-      o << p << '\t';
+      o << '\t' << p;
     }
     for (const float p : p_at_other_location) {
-      o << p << '\t';
+      o << '\t' << p;
     }
     for (const float p : p_surrounding) {
-      o << p << '\t';
+      o << '\t' << p;
     }
     o << endl;
   }
