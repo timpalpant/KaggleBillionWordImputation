@@ -11,6 +11,8 @@ PUNCTUATION = set(("'", '"', ',', '.', '!', '?', ';', ':', '-', '--', '(', ')',
 
 POS_TAGS = set(('UH','WP$','PDT','RBS','LS','EX','WP','$','SYM','RP','CC','RBR','VBG','NNS','CD','PRP$','MD','DT','NNPS','VBD','IN','JJS','WRB','VBN','JJR','WDT','POS','TO','NNP','JJ','RB','VB','FW','PRP','VBZ','NN','VBP'))
 
+UNKNOWN = '<unknown>'
+
 def is_punctuation(word):
     return (word in PUNCTUATION)
     
@@ -97,3 +99,54 @@ def score(golden, predicted):
         total_d += Levenshtein.distance(ref, pred)
         n += 1
     return total_d / n
+    
+class Prediction(object):
+    keep_top_n = 5
+    
+    def __init__(self, word, loc, Z, Z_location, *args):
+        self.word = word
+        self.locations = loc
+        self.Z = Z
+        self.Z_location = Z_location
+        self.other_locations = args[:self.keep_top_n]
+        self.p_anywhere = args[self.keep_top_n:2*self.keep_top_n]
+        self.p_at_location = args[2*self.keep_top_n:3*self.keep_top_n]
+        self.p_at_other_location = args[3*self.keep_top_n:4*self.keep_top_n]
+        self.p_surrounding = args[4*self.keep_top_n:]
+        #assert self.p_anywhere[0] == self.p_at_location[0]
+        #assert self.p_at_location[0] != self.p_at_other_location[0]
+        
+    @property
+    def location(self):
+        return self.locations[0]
+        
+    @property
+    def order(self):
+        return len(self.p_surrounding)
+        
+    @property
+    def location_posterior(self):
+        return 10.**(self.Z_location - self.Z)
+        
+    @property
+    def word_posterior(self):
+        return 10.**(self.p_at_location[0] - self.Z)
+        
+    @property
+    def location_ratio(self):
+        return self.p_at_location[0] - self.p_at_other_location[0]
+        
+    @property
+    def word_ratio(self):
+        return self.p_at_location[0] - self.p_at_location[1]
+        
+    @classmethod
+    def parse(cls, line):
+        entry = line.rstrip().split('\t')
+        word = entry[0]
+        # locations
+        loc = map(int, entry[1:cls.keep_top_n+1])
+        # probabilities
+        for i in xrange(cls.keep_top_n+2, len(entry)):
+            entry[i] = float(entry[i])
+        return cls(word, loc, *entry[cls.keep_top_n+2:])
