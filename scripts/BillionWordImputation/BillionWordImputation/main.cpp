@@ -9,6 +9,7 @@
 #include <iostream>
 #include <string>
 #include <fstream>
+#include <list>
 
 #define KENLM_MAX_ORDER 6
 #define HAVE_ZLIB 1
@@ -55,21 +56,42 @@ public:
   }
 };
 
+vector<size_t> merge_locations(const vector<float>& p_anywhere,
+                               const size_t location,
+                               const vector<float>& p_at_location,
+                               const vector<size_t>& other_locations) {
+  size_t i = 0, j = 0;
+  vector<size_t> merged(other_locations.size());
+  for (size_t k = 0; k < merged.size(); k++) {
+    if (p_anywhere[i] > p_at_location[j]) {
+      merged[k] = other_locations[i];
+      i++;
+    } else {
+      merged[k] = location;
+      j++;
+    }
+  }
+  
+  return merged;
+}
+
 class Guess {
 public:
-  int location;
+  size_t location;
   WordIndex word;
-  vector<float> p_at_location; // P(sentence) for best N words at location
+  vector<float> p_at_location; // P(sentence) for best N words at this location
   vector<float> p_surrounding; // P(word | context) for N-grams including word
   vector<float> p_at_other_location; // P(sentence) for best N words at a different location
   vector<float> p_anywhere; // P(sentence) for the best N words at any location
   vector<float> Z; // sum P(sentence) for each insertion location
-  float Z_location; // sum P(sentence) for bets insertion location
+  float Z_location; // sum P(sentence) for best insertion location
+  vector<size_t> other_locations; // location corresponding to each entry in p_anywhere
   
   Guess() : Guess(-1) { }
   
   Guess(const int loc) : p_at_location(KEEP_TOP_N, -numeric_limits<float>::infinity()),
-                         p_anywhere(KEEP_TOP_N, -numeric_limits<float>::infinity()) {
+                         p_anywhere(KEEP_TOP_N, -numeric_limits<float>::infinity()),
+                         other_locations(KEEP_TOP_N, -1) {
     location = loc;
     Z.reserve(MAX_VOCAB_SIZE);
   }
@@ -104,6 +126,7 @@ public:
             other.p_at_location.crbegin(), other.p_at_location.crend(),
             merged.rbegin());
       merged.resize(KEEP_TOP_N);
+      other_locations = merge_locations(p_anywhere, other.location, other.p_at_location, other_locations);
       p_anywhere = merged;
     }
     
@@ -122,6 +145,9 @@ public:
     o << '\t' << dict->get(word);
     o << '\t' << logsumexp(Z);
     o << '\t' << Z_location;
+    for (const size_t i : other_locations) {
+      o << '\t' << (int(i)-int(location));
+    }
     for (const float p : p_anywhere) {
       o << '\t' << p;
     }
