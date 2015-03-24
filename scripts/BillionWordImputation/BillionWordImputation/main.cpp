@@ -56,18 +56,18 @@ public:
   }
 };
 
-vector<size_t> merge_locations(const vector<float>& p_anywhere,
-                               const size_t location,
-                               const vector<float>& p_at_location,
-                               const vector<size_t>& other_locations) {
+vector<size_t> merge_locations(const vector<float>& p1,
+                               const vector<size_t>& locations1,
+                               const vector<float>& p2,
+                               const vector<size_t>& locations2) {
   size_t i = 0, j = 0;
-  vector<size_t> merged(other_locations.size());
+  vector<size_t> merged(locations1.size());
   for (size_t k = 0; k < merged.size(); k++) {
-    if (p_anywhere[i] > p_at_location[j]) {
-      merged[k] = other_locations[i];
+    if (p1[i] > p2[j]) {
+      merged[k] = locations1[i];
       i++;
     } else {
-      merged[k] = location;
+      merged[k] = locations2[j];
       j++;
     }
   }
@@ -77,22 +77,22 @@ vector<size_t> merge_locations(const vector<float>& p_anywhere,
 
 class Guess {
 public:
-  size_t location;
+  vector<size_t> locations; // location corresponding to each entry in p_anywhere
   WordIndex word;
   vector<float> p_at_location; // P(sentence) for best N words at this location
   vector<float> p_surrounding; // P(word | context) for N-grams including word
   vector<float> p_at_other_location; // P(sentence) for best N words at a different location
   vector<float> p_anywhere; // P(sentence) for the best N words at any location
   vector<float> Z; // sum P(sentence) for each insertion location
-  float Z_location; // sum P(sentence) for best insertion location
-  vector<size_t> other_locations; // location corresponding to each entry in p_anywhere
+  vector<float> Z_location; // sum P(sentence) for each insertion location
+  float Z_best_location; // sum P(sentence) for best insertion location
   
   Guess() : Guess(-1) { }
   
   Guess(const int loc) : p_at_location(KEEP_TOP_N, -numeric_limits<float>::infinity()),
+                         p_at_other_location(KEEP_TOP_N, -numeric_limits<float>::infinity()),
                          p_anywhere(KEEP_TOP_N, -numeric_limits<float>::infinity()),
-                         other_locations(KEEP_TOP_N, -1) {
-    location = loc;
+                         locations(KEEP_TOP_N, loc) {
     Z.reserve(MAX_VOCAB_SIZE);
   }
   
@@ -114,11 +114,11 @@ public:
       }
     }
     
-    Z.push_back(p);
+    Z_location.push_back(p);
   }
   
   void update(const Guess& other) {
-    Z.push_back(logsumexp(other.Z));
+    Z.push_back(logsumexp(other.Z_location));
     
     if (other.p_at_location.front() > p_anywhere.back()) {
       vector<float> merged(p_anywhere.size()+other.p_at_location.size());
@@ -126,28 +126,27 @@ public:
             other.p_at_location.crbegin(), other.p_at_location.crend(),
             merged.rbegin());
       merged.resize(KEEP_TOP_N);
-      other_locations = merge_locations(p_anywhere, other.location, other.p_at_location, other_locations);
+      locations = merge_locations(p_anywhere, locations, other.p_at_location, other.locations);
       p_anywhere = merged;
     }
     
     if (other.p_at_location.front() > p_at_location.front()) { // new best
-      location = other.location;
+      locations = other.locations;
       word = other.word;
       p_at_other_location = p_at_location;
       p_at_location = other.p_at_location;
       p_surrounding = other.p_surrounding;
-      Z_location = Z.back();
+      Z_best_location = Z.back();
     }
   }
   
   void print_to(ostream& o, const Dictionary* dict) {
-    o << location;
-    o << '\t' << dict->get(word);
-    o << '\t' << logsumexp(Z);
-    o << '\t' << Z_location;
-    for (const size_t i : other_locations) {
-      o << '\t' << (int(i)-int(location));
+    o << dict->get(word);
+    for (const size_t i : locations) {
+      o << '\t' << i;
     }
+    o << '\t' << logsumexp(Z);
+    o << '\t' << Z_best_location;
     for (const float p : p_anywhere) {
       o << '\t' << p;
     }
@@ -232,9 +231,15 @@ Guess find_missing_word(const Model& model, const Tokens& words) {
   score_sentence(model, words, states, p);
   
   if (words.size() <= 1) {
-    return max_prob_word_at(model, words, 0, states, p);
+    Guess best = max_prob_word_at(model, words, 0, states, p);
+    best.p_anywhere = best.p_at_location;
+    best.Z.push_back(logsumexp(best.Z_location));
+    return best;
   } else if (words.size() <= 2) {
-    return max_prob_word_at(model, words, 1, states, p);
+    Guess best = max_prob_word_at(model, words, 1, states, p);
+    best.p_anywhere = best.p_at_location;
+    best.Z.push_back(logsumexp(best.Z_location));
+    return best;
   }
   
   Guess best, i_best;
