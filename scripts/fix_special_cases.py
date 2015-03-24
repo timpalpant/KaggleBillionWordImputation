@@ -2,7 +2,7 @@
 
 import argparse, sys
 from itertools import izip
-from util import POS_TAGS
+from util import POS_TAGS, UNKNOWN
 
 def opts():
     parser = argparse.ArgumentParser(
@@ -11,13 +11,13 @@ def opts():
 
 if __name__ == "__main__":
     args = opts().parse_args()
-    unk = set(('<s>','</s>','<unk>'))
+    unk = set(('<s>','</s>','<unk>',UNKNOWN))
     unk.update(POS_TAGS)
     for line in sys.stdin:
         entry = line.rstrip().split()
-        predicted_word = entry[2]
+        predicted_word = entry[1]
         if predicted_word in unk:
-            entry[2] = ' ' # just insert a space
+            entry[1] = ' ' # just insert a space, even if confident
         if predicted_word == 'i':
-            entry[2] = 'I'
+            entry[1] = 'I'
         print '\t'.join(entry)
