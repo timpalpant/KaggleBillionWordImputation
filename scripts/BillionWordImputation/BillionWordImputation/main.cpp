@@ -312,6 +312,21 @@ int main(int argc, const char* argv[]) {
       process_sentences(tmodel, dict);
       break;
     } {
+    case ModelType::QUANT_TRIE:
+      QuantTrieModel qtmodel(model_filename, cfg);
+      process_sentences(qtmodel, dict);
+      break;
+    } {
+    case ModelType::ARRAY_TRIE:
+      ArrayTrieModel atmodel(model_filename, cfg);
+      process_sentences(atmodel, dict);
+      break;
+    } {
+    case ModelType::QUANT_ARRAY_TRIE:
+      QuantArrayTrieModel qatmodel(model_filename, cfg);
+      process_sentences(qatmodel, dict);
+      break;
+    } {
     default:
       cerr << "Unsupported model type: " << model_type << endl;
       exit(2);
