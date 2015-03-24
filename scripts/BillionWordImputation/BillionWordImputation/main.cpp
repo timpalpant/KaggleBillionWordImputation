@@ -56,23 +56,23 @@ public:
   }
 };
 
-vector<size_t> merge_locations(const vector<float>& p1,
-                               const vector<size_t>& locations1,
-                               const vector<float>& p2,
-                               const vector<size_t>& locations2) {
+void merge_locations(const vector<float>& p1, const vector<size_t>& locations1,
+                     const vector<float>& p2, const vector<size_t>& locations2,
+                     vector<float>& merged_p, vector<size_t>& merged_locations) {
   size_t i = 0, j = 0;
-  vector<size_t> merged(locations1.size());
-  for (size_t k = 0; k < merged.size(); k++) {
+  merged_p.resize(p1.size());
+  merged_locations.resize(p1.size());
+  for (size_t k = 0; k < merged_p.size(); k++) {
     if (p1[i] > p2[j]) {
-      merged[k] = locations1[i];
+      merged_p[k] = p1[i];
+      merged_locations[k] = locations1[i];
       i++;
     } else {
-      merged[k] = locations2[j];
+      merged_p[k] = p2[j];
+      merged_locations[k] = locations2[j];
       j++;
     }
   }
-  
-  return merged;
 }
 
 class Guess {
@@ -121,13 +121,14 @@ public:
     Z.push_back(logsumexp(other.Z_location));
     
     if (other.p_at_location.front() > p_anywhere.back()) {
-      vector<float> merged(p_anywhere.size()+other.p_at_location.size());
-      merge(p_anywhere.crbegin(), p_anywhere.crend(),
-            other.p_at_location.crbegin(), other.p_at_location.crend(),
-            merged.rbegin());
-      merged.resize(KEEP_TOP_N);
-      locations = merge_locations(p_anywhere, locations, other.p_at_location, other.locations);
-      p_anywhere = merged;
+      // some words at other location displace some in the top N
+      vector<float> merged_p(p_anywhere.size());
+      vector<size_t> merged_locations(p_anywhere.size());
+      merge_locations(p_anywhere, locations,
+                      other.p_at_location, other.locations,
+                      merged_p, merged_locations);
+      p_anywhere = move(merged_p);
+      locations = move(merged_locations);
     }
     
     if (other.p_at_location.front() > p_at_location.front()) { // new best
@@ -234,11 +235,13 @@ Guess find_missing_word(const Model& model, const Tokens& words) {
     Guess best = max_prob_word_at(model, words, 0, states, p);
     best.p_anywhere = best.p_at_location;
     best.Z.push_back(logsumexp(best.Z_location));
+    best.Z_best_location = best.Z.back();
     return best;
   } else if (words.size() <= 2) {
     Guess best = max_prob_word_at(model, words, 1, states, p);
     best.p_anywhere = best.p_at_location;
     best.Z.push_back(logsumexp(best.Z_location));
+    best.Z_best_location = best.Z.back();
     return best;
   }
   
