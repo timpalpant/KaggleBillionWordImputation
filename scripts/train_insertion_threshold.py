@@ -38,7 +38,8 @@ if __name__ == "__main__":
     assert len(X) == len(y)
     assert len(y) == len(d)
     X[np.isinf(X)] = 0
-    
+    X[np.isnan(X)] = 0   
+ 
     print "Splitting into train and test"
     X_train, X_test, y_train, y_test, d_train, d_test = train_test_split(X, y, d,
         test_size=0.2, random_state=123)

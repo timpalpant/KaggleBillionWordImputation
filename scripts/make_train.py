@@ -76,7 +76,7 @@ if __name__ == "__main__":
     
     print "Making data frames"
     order = predictions[0].order
-    nfeatures = 7*Prediction.keep_top_n - 2 + 2*order + 10
+    nfeatures = 7*Prediction.keep_top_n - 2 + 2*order + 12
     print "%d features for each sentence" % nfeatures
     X = np.zeros((len(predictions), nfeatures))
     for i, (p, g) in enumerate(izip(predictions, golden)):
@@ -93,7 +93,7 @@ if __name__ == "__main__":
         row += [p.location_posterior, 10.**p.location_ratio, 10.**p.word_ratio]
         nwords_in_sentence = len(g)
         # properties relating to location of word in sentence
-        row += [x-p.locations[0] for x in p.locations[1:]]
+        row += [abs(x-p.locations[0]) for x in p.locations[1:]]
         row += [nwords_in_sentence, nwords_in_sentence-p.location,
                 p.location, float(p.location)/nwords_in_sentence]
         # features of the sentence

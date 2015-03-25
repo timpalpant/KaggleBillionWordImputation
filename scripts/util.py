@@ -103,16 +103,15 @@ def score(golden, predicted):
 class Prediction(object):
     keep_top_n = 5
     
-    def __init__(self, word, loc, Z, Z_location, *args):
+    def __init__(self, word, locations, Z, Z_location, *args):
         self.word = word
-        self.locations = loc
+        self.locations = locations
         self.Z = Z
         self.Z_location = Z_location
-        self.other_locations = args[:self.keep_top_n]
-        self.p_anywhere = args[self.keep_top_n:2*self.keep_top_n]
-        self.p_at_location = args[2*self.keep_top_n:3*self.keep_top_n]
-        self.p_at_other_location = args[3*self.keep_top_n:4*self.keep_top_n]
-        self.p_surrounding = args[4*self.keep_top_n:]
+        self.p_anywhere = args[:self.keep_top_n]
+        self.p_at_location = args[self.keep_top_n:2*self.keep_top_n]
+        self.p_at_other_location = args[2*self.keep_top_n:3*self.keep_top_n]
+        self.p_surrounding = args[3*self.keep_top_n:]
         #assert self.p_anywhere[0] == self.p_at_location[0]
         #assert self.p_at_location[0] != self.p_at_other_location[0]
         
@@ -145,8 +144,8 @@ class Prediction(object):
         entry = line.rstrip().split('\t')
         word = entry[0]
         # locations
-        loc = map(int, entry[1:cls.keep_top_n+1])
+        loc = map(int, entry[1:cls.keep_top_n])
         # probabilities
-        for i in xrange(cls.keep_top_n+2, len(entry)):
+        for i in xrange(cls.keep_top_n+1, len(entry)):
             entry[i] = float(entry[i])
-        return cls(word, loc, *entry[cls.keep_top_n+2:])
+        return cls(word, loc, *entry[cls.keep_top_n+1:])
