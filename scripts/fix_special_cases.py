@@ -15,9 +15,9 @@ if __name__ == "__main__":
     unk.update(POS_TAGS)
     for line in sys.stdin:
         entry = line.rstrip().split()
-        predicted_word = entry[1]
+        predicted_word = entry[0]
         if predicted_word in unk:
-            entry[1] = ' ' # just insert a space, even if confident
+            entry[0] = ' ' # just insert a space, even if confident
         if predicted_word == 'i':
-            entry[1] = 'I'
+            entry[0] = 'I'
         print '\t'.join(entry)

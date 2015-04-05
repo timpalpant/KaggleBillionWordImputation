@@ -3,7 +3,8 @@
 import argparse
 from itertools import izip
 import numpy as np
-from util import Prediction, tokenize_words, is_pos_tag, is_punctuation, UNKNOWN
+from util import Prediction, tokenize_words, is_punctuation, load_vocab
+from util import POS_TAGS, UNKNOWN
 import Levenshtein
 
 def any_true(words, f, begin=None, end=None):
@@ -12,11 +13,8 @@ def any_true(words, f, begin=None, end=None):
         
     return any(f(w) for w in words[begin:end])
 
-def any_pos(words, begin=None, end=None):
-    return any_true(words, is_pos_tag, begin, end)
-    
-def any_unk(words, begin=None, end=None):
-    return any_true(words, lambda w: w==UNKNOWN, begin, end)
+def any_oov(vocab, words, begin=None, end=None):
+    return any_true(words, lambda w: w not in vocab, begin, end)
 
 def any_punctuation(words, begin=None, end=None):
     return any_true(words, is_punctuation, begin, end)
@@ -71,12 +69,17 @@ if __name__ == "__main__":
     d = cost_per_choice(golden, golden_loc, predictions)
     print "Identifying optimal choices"
     y = np.argmin(d, axis=1)
-    dx = np.mean([di[yi] for di, yi in izip(d,y)])
-    print "Best achievable Levenshtein distance: %.3f" % dx
+    best = [di[yi] for di, yi in izip(d,y)]
+    dx = np.mean(best)
+    error = np.std(best) / np.sqrt(len(best))
+    print "Best achievable Levenshtein distance: %.3f +/- %.3f" % (dx, error)
+    
+    unk = set(('<s>','</s>','<unk>',UNKNOWN))
+    unk.update(POS_TAGS)
     
     print "Making data frames"
     order = predictions[0].order
-    nfeatures = 7*Prediction.keep_top_n - 2 + 2*order + 12
+    nfeatures = 7*Prediction.keep_top_n - 2 + 2*order + 8
     print "%d features for each sentence" % nfeatures
     X = np.zeros((len(predictions), nfeatures))
     for i, (p, g) in enumerate(izip(predictions, golden)):
@@ -94,13 +97,11 @@ if __name__ == "__main__":
         nwords_in_sentence = len(g)
         # properties relating to location of word in sentence
         row += [abs(x-p.locations[0]) for x in p.locations[1:]]
+        row += [all(loc==p.locations[0] for loc in p.locations)]
         row += [nwords_in_sentence, nwords_in_sentence-p.location,
                 p.location, float(p.location)/nwords_in_sentence]
         # features of the sentence
-        begin = p.location - order
-        end = p.location + order
-        row += [any_pos(g, begin, end), any_unk(g, begin, end), 
-                any_punctuation(g, begin, end), any_pos(g), any_unk(g)]
+        row.append(p.word in unk)
         X[i] = row
         
     print "Saving data frames to output"

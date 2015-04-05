@@ -63,14 +63,6 @@
             argument = "/Users/timpalpant/Documents/Workspace/kaggle/BillionWordImputation/data/kenlm/4-grams.kenlm"
             isEnabled = "YES">
          </CommandLineArgument>
-         <CommandLineArgument
-            argument = "/Users/timpalpant/Documents/Workspace/kaggle/BillionWordImputation/scripts/tmp1.txt"
-            isEnabled = "YES">
-         </CommandLineArgument>
-         <CommandLineArgument
-            argument = "/Users/timpalpant/Documents/Workspace/kaggle/BillionWordImputation/scripts/tmp2.txt"
-            isEnabled = "YES">
-         </CommandLineArgument>
       </CommandLineArguments>
       <AdditionalOptions>
       </AdditionalOptions>

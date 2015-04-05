@@ -24,6 +24,8 @@ def opts():
         help='File with true location of removed word')
     parser.add_argument('predicted', type=argparse.FileType('r'),
         help='Predictions for missing word and location')
+    parser.add_argument('output',
+        help='Output PDF with loss surface')
     return parser
 
 if __name__ == "__main__":
@@ -82,4 +84,4 @@ if __name__ == "__main__":
     plt.yticks(np.arange(len(loc_thresholds)), loc_thresholds)
     plt.xticks(np.arange(len(word_thresholds)), word_thresholds)
     plt.tight_layout()
-    plt.savefig('loss_surface.pdf')
+    plt.savefig(args.output)

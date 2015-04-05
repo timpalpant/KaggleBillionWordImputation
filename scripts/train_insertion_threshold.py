@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import argparse
+import argparse, itertools
 import cPickle as pickle
 from itertools import izip
 import numpy as np
@@ -19,6 +19,11 @@ from sklearn.cross_validation import train_test_split
 def load(fd):
     d = np.load(args.data)
     return d['X'], d['y'], d['d']
+
+def cartesian_product(params):
+    product = [x for x in apply(itertools.product, params.values())]
+    for p in product:
+        yield dict(izip(params.keys(), p))
 
 def opts():
     parser = argparse.ArgumentParser(
@@ -52,9 +57,12 @@ if __name__ == "__main__":
     def test_clf(clf):
         clf.fit(X_train, y_train)
         y_pred = clf.predict(X_test)
-        print "unweighted accuracy = %.3f" % accuracy_score(y_test, y_pred)
-        dx = np.mean([s[yi] for s, yi in izip(d_test, y_pred)])
-        print "Levenshtein distance = %s" % dx
+        print "accuracy = %.3f" % accuracy_score(y_test, y_pred)
+        d = [s[yi] for s, yi in izip(d_test, y_pred)]
+        dx = np.mean(d)
+        error = np.std(d) / np.sqrt(len(d))
+        print "Levenshtein distance = %.3f +/- %.3f" % (dx, error)
+        return dx
     
     #print "Training LogisticRegression model"
     #lr = LogisticRegression(C=1.)
@@ -67,9 +75,30 @@ if __name__ == "__main__":
     #results['dt'] = dt
     
     print "Training RandomForest model"
-    rf = RandomForestClassifier(n_estimators=20*8, n_jobs=8)
-    test_clf(rf)
-    results['rf'] = rf
+    grid_search = {'criterion': ['gini', 'entropy'],
+                   'max_features': ['auto', 0.7, 0.8, 0.9, 'log2'],
+                   'max_depth': [None, 3, 5, 9],
+                   'min_samples_split': [1, 2, 4, 6, 8],
+                   'min_samples_leaf': [1, 2, 3, 4]}
+    grid_search = {'criterion': ['gini'],
+                   'max_features': ['auto'],
+                   'max_depth': [9, 15],
+                   'min_samples_split': [2],
+                   'min_samples_leaf': [2]}
+    best = float('inf')
+    best_params = None
+    best_clf = None
+    for params in cartesian_product(grid_search):
+        print params
+        rf = RandomForestClassifier(n_estimators=20*8, n_jobs=8, **params)
+        score = test_clf(rf)
+        if score < best:
+            best = score
+            best_params = params
+            best_clf = rf
+    print "Best params: %s" % best_params
+    print "Best score: %s" % best
+    results['rf'] = best_clf
     
     #print "Training LinearSVM model"
     #svm = LinearSVC()
