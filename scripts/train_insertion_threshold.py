@@ -46,13 +46,14 @@ if __name__ == "__main__":
     X[np.isnan(X)] = 0   
  
     print "Splitting into train and test"
-    X_train, X_test, y_train, y_test, d_train, d_test = train_test_split(X, y, d,
-        test_size=0.2, random_state=123)
+    i = np.arange(len(X))
+    X_train, X_test, y_train, y_test, d_train, d_test, i_train, i_test = \
+        train_test_split(X, y, d, i, test_size=0.2, random_state=123)
     
-    print "Scaling features"
-    scaler = MinMaxScaler()
-    X = scaler.fit_transform(X)
-    results['scaler'] = scaler
+    #print "Scaling features"
+    #scaler = MinMaxScaler()
+    #X = scaler.fit_transform(X)
+    #results['scaler'] = scaler
     
     def test_clf(clf):
         clf.fit(X_train, y_train)
@@ -77,11 +78,11 @@ if __name__ == "__main__":
     print "Training RandomForest model"
     grid_search = {'criterion': ['gini', 'entropy'],
                    'max_features': ['auto', 0.7, 0.8, 0.9, 'log2'],
-                   'max_depth': [None, 3, 5, 9],
+                   'max_depth': [None, 3, 5, 9, 12],
                    'min_samples_split': [1, 2, 4, 6, 8],
                    'min_samples_leaf': [1, 2, 3, 4]}
     grid_search = {'criterion': ['gini'],
-                   'max_features': ['auto'],
+                   'max_features': ['auto', 0.8],
                    'max_depth': [9, 15],
                    'min_samples_split': [2],
                    'min_samples_leaf': [2]}
@@ -99,6 +100,15 @@ if __name__ == "__main__":
     print "Best params: %s" % best_params
     print "Best score: %s" % best
     results['rf'] = best_clf
+    
+    # save best predictions for analysis
+    y_pred = best_clf.predict(X_test)
+    errors = np.where(y_test != y_pred)[0]
+    results['errors'] = {'X': X_test[errors],
+                         'y_pred': y_pred[errors],
+                         'y_actual': y_test[errors],
+                         'd': d_test[errors],
+                         'sentence_ids': i_test[errors]}
     
     #print "Training LinearSVM model"
     #svm = LinearSVC()

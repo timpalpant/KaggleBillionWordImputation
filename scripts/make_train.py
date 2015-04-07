@@ -79,10 +79,10 @@ if __name__ == "__main__":
     
     print "Making data frames"
     order = predictions[0].order
-    nfeatures = 7*Prediction.keep_top_n - 2 + 2*order + 8
+    nfeatures = 7*Prediction.keep_top_n - 2 + 2*order + 10
     print "%d features for each sentence" % nfeatures
     X = np.zeros((len(predictions), nfeatures))
-    for i, (p, g) in enumerate(izip(predictions, golden)):
+    for i, (p, g, gi) in enumerate(izip(predictions, golden, golden_loc)):
         # log10 probabilities of top N words, and surrounding N-grams
         xs = p.p_at_location + p.p_anywhere + p.p_at_other_location
         row = [10.**(x-p.Z) for x in xs]
@@ -94,14 +94,22 @@ if __name__ == "__main__":
             row += [10.**x for x in p.p_surrounding]
         # posterior probabilities of best location
         row += [p.location_posterior, 10.**p.location_ratio, 10.**p.word_ratio]
-        nwords_in_sentence = len(g)
-        # properties relating to location of word in sentence
+        nwords_in_sentence = len(g) - 1 # b/c these are golden sentences
+        # distance of top N words from top location
         row += [abs(x-p.locations[0]) for x in p.locations[1:]]
-        row += [all(loc==p.locations[0] for loc in p.locations)]
-        row += [nwords_in_sentence, nwords_in_sentence-p.location,
-                p.location, float(p.location)/nwords_in_sentence]
-        # features of the sentence
+        # fraction of top N words predicted to be at this location
+        try: f = sum(loc==p.locations[0] for loc in p.locations) / float(len(p.locations))
+        except ZeroDivisionError: f = 0
+        try: f2 = float(p.location)/nwords_in_sentence
+        except ZeroDivisionError: f2 = 0
+        row += [f, nwords_in_sentence, nwords_in_sentence-p.location, p.location, f2]
+        # predicted word is unknown / POS tag
         row.append(p.word in unk)
+        # amount of punctuation in the sentence
+        npunct = sum(is_punctuation(w) for i, w in enumerate(g) if i != gi)
+        # amount of punctuation around the predicted word
+        npunct_around_word = sum(is_punctuation(w) for w in g[max(0,i-5):i+5])
+        row += [npunct, npunct_around_word]
         X[i] = row
         
     print "Saving data frames to output"
