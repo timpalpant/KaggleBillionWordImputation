@@ -14,6 +14,10 @@ def opts():
         help='Sentences with one missing word')
     parser.add_argument('predictions', type=argparse.FileType('r'),
         help='File with predicted indices of missing words')
+    parser.add_argument('--location-threshold', type=float,
+        default=0, help='Threshold for whether to insert anything')
+    parser.add_argument('--word-threshold', type=float, default=0,
+        help='Threshold for whether to insert word or space')
     return parser
 
 if __name__ == "__main__":
@@ -22,7 +26,10 @@ if __name__ == "__main__":
     for sentence, pred in izip(args.sample, args.predictions):
         words = tokenize_words(sentence)
         p = Prediction.parse(pred)
-        i_missing = p.locations[0]
-        words.insert(i_missing, p.word)
+        if p.location_posterior > args.location_threshold:
+            if p.word_posterior > args.word_threshold:
+                words.insert(p.location, p.word)
+            else:
+                words.insert(p.location, ' ')
         print ' '.join(words)
         

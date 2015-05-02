@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>IDESourceControlProjectFavoriteDictionaryKey</key>
+	<false/>
+	<key>IDESourceControlProjectIdentifier</key>
+	<string>E487A97B-D45B-424B-9945-B8C8884F654A</string>
+	<key>IDESourceControlProjectName</key>
+	<string>project</string>
+	<key>IDESourceControlProjectOriginsDictionary</key>
+	<dict>
+		<key>42D90729425604D47DD738220D98783542FCB265</key>
+		<string>https://github.com/kpu/kenlm.git</string>
+		<key>F54747DF689A20E4FA3752D6A562F6F5373B74B2</key>
+		<string>ssh://timpalpant.diskstation.me:23/volume2/git/billionwordimputation.git</string>
+	</dict>
+	<key>IDESourceControlProjectPath</key>
+	<string>scripts/BillionWordImputation/BillionWordImputation.xcodeproj/project.xcworkspace</string>
+	<key>IDESourceControlProjectRelativeInstallPathDictionary</key>
+	<dict>
+		<key>42D90729425604D47DD738220D98783542FCB265</key>
+		<string>../../../../../kenlm</string>
+		<key>F54747DF689A20E4FA3752D6A562F6F5373B74B2</key>
+		<string>../../../..</string>
+	</dict>
+	<key>IDESourceControlProjectURL</key>
+	<string>ssh://timpalpant.diskstation.me:23/volume2/git/billionwordimputation.git</string>
+	<key>IDESourceControlProjectVersion</key>
+	<integer>111</integer>
+	<key>IDESourceControlProjectWCCIdentifier</key>
+	<string>F54747DF689A20E4FA3752D6A562F6F5373B74B2</string>
+	<key>IDESourceControlProjectWCConfigurations</key>
+	<array>
+		<dict>
+			<key>IDESourceControlRepositoryExtensionIdentifierKey</key>
+			<string>public.vcs.git</string>
+			<key>IDESourceControlWCCIdentifierKey</key>
+			<string>F54747DF689A20E4FA3752D6A562F6F5373B74B2</string>
+			<key>IDESourceControlWCCName</key>
+			<string>BillionWordImputation</string>
+		</dict>
+		<dict>
+			<key>IDESourceControlRepositoryExtensionIdentifierKey</key>
+			<string>public.vcs.git</string>
+			<key>IDESourceControlWCCIdentifierKey</key>
+			<string>42D90729425604D47DD738220D98783542FCB265</string>
+			<key>IDESourceControlWCCName</key>
+			<string>kenlm</string>
+		</dict>
+	</array>
+</dict>
+</plist>

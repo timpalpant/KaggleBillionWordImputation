@@ -1,8 +1,9 @@
-import sys
+import sys, bisect
 from collections import defaultdict
 from itertools import islice, izip
 import numpy as np
 from scipy.misc import logsumexp
+from scipy.spatial import distance
 import Levenshtein
 
 PUNCTUATION = set(("'", '"', ',', '.', '!', '?', ';', ':', '-', '--', '(', ')', 
@@ -43,14 +44,6 @@ def tokenize_words(line, delim=' '):
 def pos_tag(word):
     return word.rsplit('_', 1)[-1]
     
-def normalize_ngrams(ngrams):
-    for k, v in ngrams.iteritems():
-        ngrams[k] = np.log10(v)
-    total = logsumexp(ngrams.values())
-    for k, v in ngrams.iteritems():
-        ngrams[k] -= total
-    return ngrams
-    
 def ngram_frequencies(istream, n=1):
     counts = defaultdict(int)
     for i, line in enumerate(istream):
@@ -87,7 +80,7 @@ def ngram_frequencies2(istream, n=1):
 def load_vocab(vocab_file):
     vocab = {}
     for line in vocab_file:
-        word, freq = line.strip().split()
+        word, freq = line.strip().split('\t')
         freq = int(freq)
         vocab[word] = freq
     return vocab
@@ -115,6 +108,64 @@ def score(golden, predicted):
         total_d += Levenshtein.distance(ref, pred)
         n += 1
     return total_d / n
+    
+def estimate_probabilities(ngrams):
+    # no smoothing; if we didn't see it in train, best not insert
+    ntotal = float(sum(ngrams.itervalues()))
+    print "%d total syntactic ngrams" % ntotal
+    p = {k: np.log10(v/ntotal) for k, v in ngrams.iteritems()}
+    print "Total probability = %f" % sum(10.**v for v in p.itervalues())
+    return p
+    
+normalize_ngrams = estimate_probabilities
+    
+class Word2Vec(object):
+    def __init__(self, words, V):
+        self.words = words
+        self.word_to_id = {w: i for i, w in enumerate(self.words)}
+        self.V = V
+        
+    @classmethod
+    def load(cls, istream):
+        # first line indicates # words and dimension of vectors
+        header = istream.readline().rstrip().split()
+        nwords = int(header[0])
+        d = int(header[1])
+        print >>sys.stderr, "Allocating %dx%d word vector matrix" \
+            % (nwords, d)
+        words = []
+        V = np.zeros((nwords,d), dtype=np.float32)
+        # subsequent lines have word and vector
+        print >>sys.stderr, "Loading word vectors"
+        for i, line in enumerate(istream):
+            entry = line.rstrip().split()
+            word = entry[0]
+            words.append(word)
+            V[i] = map(float, entry[1:])
+            if i % 500000 == 0: print >>sys.stderr, i
+        return cls(words, V)
+        
+    def get(self, word):
+        '''get vector for word'''
+        if word not in self.word_to_id:
+            raise ValueError("Word2Vec does not contain '%s'" % word)
+        id = self.word_to_id[word]
+        return self.V[id]
+        
+    def nearest(self, word, indices=None):
+        '''yield words in ascending order of distance to @word'''
+        # compute distance from word to all other words
+        # too much memory to precompute all of these ahead of time
+        # and vector dimension is too large for a KD-tree to be much help
+        word_vec = np.array(self.get(word), ndmin=2)
+        V = self.V if indices is None else self.V[indices]
+        d = distance.cdist(word_vec, V)[0]
+        for i in np.argsort(d):
+            w = self.words[i]
+            # element 0 is this word (d=0) if this word is in indices
+            # but not this word if this word is not in indices
+            if w == word: continue
+            yield w
     
 class Prediction(object):
     keep_top_n = 5
@@ -165,3 +216,22 @@ class Prediction(object):
         for i in xrange(cls.keep_top_n+1, len(entry)):
             entry[i] = float(entry[i])
         return cls(word, loc, *entry[cls.keep_top_n+1:])
+        
+class TopK(object):
+    '''Keep track the top-k objects'''
+    def __init__(self, n):
+        self.things = [None] * n
+        self.values = [float('inf')] * n
+        
+    def add(self, thing, value):
+        i = bisect.bisect(self.values, -value)
+        if i < len(self.values):
+            self.values[i] = -value
+            self.things[i] = thing
+            
+    def update(self, other):
+        for thing, value in other:
+            self.add(thing, -value)
+            
+    def __iter__(self):
+        return izip(self.things, self.values)

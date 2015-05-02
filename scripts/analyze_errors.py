@@ -19,6 +19,18 @@ def opts():
         help='Predictions for missing word and location')
     return parser
 
+def print_error(p, g, gi):
+    g[gi] = '***%s***' % g[gi]
+    insertions = [gi]
+    g.insert(p.locations[0]+int(p.locations[0]>gi), '^^^%s(%.3f/%.3f)^^^' \
+        % (p.word, p.word_posterior, p.location_posterior))
+    insertions.append(p.locations[0])
+    for l, pr in zip(p.locations, p.p_anywhere[1:]):
+        il = l + sum(i<l for i in insertions)
+        g.insert(il, '###%.3f###' % (10**(pr-p.Z)))
+        insertions.append(il)
+    print ' '.join(g)
+
 if __name__ == "__main__":
     args = opts().parse_args()
     
@@ -38,7 +50,5 @@ if __name__ == "__main__":
     print >>sys.stderr, "Processing sentences"
     for p, g, gi in izip(predictions, golden, golden_loc):
         if p.locations[0] != gi or p.word != g[gi]: # error
-            g[gi] = '***%s***' % g[gi]
-            g.insert(p.locations[0], '^^^%s^^^' % p.word)
-            print ' '.join(g)
+            print_error(p, g, gi)
         

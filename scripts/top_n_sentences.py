@@ -2,49 +2,53 @@
 
 '''
 Identify the location of a missing word in a sentence
-using an n-gram model.
+using an n-gram model. Print the top N most probable
+sentences.
 '''
 
 import sys, argparse, pickle
 from itertools import islice
 import numpy as np
 import kenlm
-from util import tokenize_words, load_vocab
+from util import tokenize_words, load_vocab, TopK
 
-def max_prob_word_at(words, i, vocab):
+def max_prob_word_at(words, i, vocab, n):
     '''
     Return the word that maximizes the sentence probability 
     if inserted at position i
     '''
-    max_p = -float('inf')
-    best = None
+    top_n = TopK(n)
     for candidate in vocab:
         inserted = words[:i] + [candidate] + words[i:]
         p = model.score(' '.join(inserted))
-        if p > max_p:
-            max_p = p
-            best = candidate
-    return best, max_p
+        top_n.add((words, i, candidate), p)
+    return top_n
 
-def find_missing_word(model, vocab, line):
+def find_missing_word(model, vocab, line, n):
     '''
     Return the location and word that maximizes the sentence probability
     if that word is inserted at that location
     '''
     words = tokenize_words(line)
     if len(words) <= 2: 
-        best, _ = max_prob_word_at(words, 1, vocab)
-        return 1, best
+        return max_prob_word_at(words, 1, vocab)
     
     # missing word cannot be the first or last
-    max_p = -float('inf')
-    best = None
+    top_n = TopK(n)
     for i in xrange(1, len(words)-1):
-        i_best, i_max_p = max_prob_word_at(words, i, vocab)
-        if i_max_p > max_p:
-            max_p = i_max_p
-            best = (i, i_best)
-    return best
+        #print >>sys.stderr, "Considering words inserted at %d:" % i
+        top_n_i = max_prob_word_at(words, i, vocab, n)
+        #print_top_n(top_n_i)
+        top_n.update(top_n_i)
+        #print >>sys.stderr, "Current best:"
+        #print_top_n(top_n)
+    return top_n
+
+def print_top_n(top_n):
+    for k, ((words, i, candidate), prob) in enumerate(top_n):
+        inserted = words[:i] + ['***%s***' % candidate] + words[i:]
+        prediction = ' '.join(inserted)
+        print "%d) P = %.3f: %s" % (k, -prob, prediction)
 
 def opts():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -52,6 +56,8 @@ def opts():
         help='KenLM n-gram model file (ARPA or binary)')
     parser.add_argument('vocab', type=argparse.FileType('r'),
         help='Vocab file')
+    parser.add_argument('-n', type=int, default=5,
+        help='Number of best sentences to report')
     return parser
 
 if __name__ == "__main__":
@@ -64,14 +70,6 @@ if __name__ == "__main__":
     model = kenlm.LanguageModel(args.model)
     
     print >>sys.stderr, "Processing sentences"
-    for line_num, line in enumerate(sys.stdin):
-        try:
-            i, guess = find_missing_word(model, vocab, line)
-            print i, guess
-        except Exception, e: 
-            print >>sys.stderr, "ERROR: %s" % line.rstrip()
-            print >>sys.stderr, e
-            print 0, ' '
-            
-        if line_num % 100 == 0:
-            print >>sys.stderr, line_num
+    for line in sys.stdin:
+        top_n = find_missing_word(model, vocab, line, args.n)
+        print_top_n(top_n)

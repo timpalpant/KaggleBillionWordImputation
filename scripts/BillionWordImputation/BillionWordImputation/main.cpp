@@ -16,7 +16,7 @@
 #define HAVE_BZLIB 1
 #define HAVE_XZLIB 1
 #define KEEP_TOP_N 5
-#define MAX_VOCAB_SIZE 50000
+#define MAX_VOCAB_SIZE 128000
 
 #include "lm/config.hh"
 #include "lm/model.hh"
@@ -93,7 +93,7 @@ public:
                          p_at_other_location(KEEP_TOP_N, -numeric_limits<float>::infinity()),
                          p_anywhere(KEEP_TOP_N, -numeric_limits<float>::infinity()),
                          locations(KEEP_TOP_N, loc) {
-    Z.reserve(MAX_VOCAB_SIZE);
+    Z_location.reserve(MAX_VOCAB_SIZE);
   }
   
   void update(const WordIndex word, const float p, const vector<float>& p_surrounding) {

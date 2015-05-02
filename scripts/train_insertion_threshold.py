@@ -17,7 +17,7 @@ from sklearn.preprocessing import PolynomialFeatures
 from sklearn.cross_validation import train_test_split
         
 def load(fd):
-    d = np.load(args.data)
+    d = np.load(fd)
     return d['X'], d['y'], d['d']
 
 def cartesian_product(params):
@@ -25,13 +25,19 @@ def cartesian_product(params):
     for p in product:
         yield dict(izip(params.keys(), p))
 
+def load_classifier(fd):
+    results = pickle.load(fd)
+    return results['rf']
+
 def opts():
     parser = argparse.ArgumentParser(
         description='Find optimal threshold for inserting words')
     parser.add_argument('data', type=argparse.FileType('r'),
         help='npz file with training data')
     parser.add_argument('output', type=argparse.FileType('w'),
-        help='Pickle file with trained classifiers')
+        help='Pickle file with output classifier')
+    parser.add_argument('--classifier', type=argparse.FileType('r'),
+        help='Input pickle file with classifier to re-use')
     return parser
 
 if __name__ == "__main__":
@@ -42,8 +48,8 @@ if __name__ == "__main__":
     X, y, d = load(args.data)
     assert len(X) == len(y)
     assert len(y) == len(d)
-    X[np.isinf(X)] = 0
-    X[np.isnan(X)] = 0   
+    X = np.asarray(X, dtype=np.float32)
+    X = np.nan_to_num(X)   
  
     print "Splitting into train and test"
     i = np.arange(len(X))
@@ -82,10 +88,11 @@ if __name__ == "__main__":
                    'min_samples_split': [1, 2, 4, 6, 8],
                    'min_samples_leaf': [1, 2, 3, 4]}
     grid_search = {'criterion': ['gini'],
-                   'max_features': ['auto', 0.8],
-                   'max_depth': [9, 15],
+                   'max_features': ['auto'],
+                   'max_depth': [9],
                    'min_samples_split': [2],
                    'min_samples_leaf': [2]}
+    grid_search = {'max_features': ['auto']}
     best = float('inf')
     best_params = None
     best_clf = None
@@ -99,7 +106,6 @@ if __name__ == "__main__":
             best_clf = rf
     print "Best params: %s" % best_params
     print "Best score: %s" % best
-    results['rf'] = best_clf
     
     # save best predictions for analysis
     y_pred = best_clf.predict(X_test)
@@ -109,10 +115,10 @@ if __name__ == "__main__":
                          'y_actual': y_test[errors],
                          'd': d_test[errors],
                          'sentence_ids': i_test[errors]}
+
+    # re-train best clf on all data
+    print "Re-training on all data"
+    best_clf.fit(X, y)
+    results['rf'] = best_clf
     
-    #print "Training LinearSVM model"
-    #svm = LinearSVC()
-    #test_clf(svm)
-    #results['svm'] = svm
-    
-    pickle.dump(results, args.output)
+    pickle.dump(results, args.output, pickle.HIGHEST_PROTOCOL)

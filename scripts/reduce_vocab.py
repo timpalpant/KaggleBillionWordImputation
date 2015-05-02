@@ -3,7 +3,7 @@
 '''Keep only the n most popular words, replacing all others with <unk>'''
 
 import sys, argparse
-from util import tokenize_words, load_vocab, prune_vocab
+from util import tokenize_words, load_vocab, prune_vocab, UNKNOWN
 
 def opts():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -24,7 +24,7 @@ if __name__ == "__main__":
         words = tokenize_words(line)
         for j, word in enumerate(words):
             if word not in vocab:
-                words[j] = '<unknown>'
+                words[j] = UNKNOWN
         print ' '.join(words)
         
         if i % 100000 == 0:

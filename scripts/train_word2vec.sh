@@ -1,3 +1,3 @@
 # 2000 word classes
 ~/Documents/Workspace/word2vec/word2vec -train ../data/train.train.lower.txt -output ../data/train.train.lower.classes2000.txt -cbow 0 -size 200 -window 5 -negative 0 -hs 1 -sample 1e-3 -threads 8 -classes 2000
-sort ../data/train.train.lower.classes2000.txt -k 2 -n > ../data/train.train.lower.classes2000.sorted.txt
+sort ../data/train.train.lower.classes2000.txt -k 2 -n > ../data/train.train.lower.classes2000.sorted.txt/Users/timpalpant/Documents/Workspace/word2vec/word2vec -train ../data/train.train.txt -output ../data/word2vec/train.train.w2v.classes_64000.txt -cbow 0 -size 200 -window 5 -min-count 5 -negative 5 -hs 1 -sample 1e-4 -threads 8 -classes 64000 -save-vocab ../data/word2vec/vocab.classes_64000.txt
